@@ -17,7 +17,7 @@ def create_app():
     from . import models  
 
     # Register routes
-    from .views import main
-    app.register_blueprint(main)
+    from .views import view
+    app.register_blueprint(view)
 
     return app

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Store Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            transition: all 0.3s;
+        }
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .main-content {
+            transition: margin-left 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- sidebar -->
+        <div class="sidebar bg-blue-800 text-white w-64 flex-shrink-0">
+            <div class="p-4 flex items-center justify-between border-b border-blue-700">
+                <div class="flex items-center">
+                    <i class="fas fa-tools text-2xl mr-3"></i>
+                    <span class="nav-text text-xl font-bold">ToolStore Pro</span>
+                </div>
+                <button id="toggleSidebar" class="text-white focus:outline-none">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav class="mt-4">
+                <a href="{{ url_for('view.dashboard') }}" clas="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/inventory" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-boxes mr-3"></i>
+                    <span class="nav-text">Inventory</span>
+                </a>
+                <a href="/movements" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-exchange-alt mr-3"></i>
+                    <span class="nav-text">Movements</span>
+                </a>
+                <a href="/maintenance" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-wrench mr-3"></i>
+                    <span class="nav-text">Maintenance</span>
+                </a>
+                <a href="/suppliers" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-truck mr-3"></i>
+                    <span class="nav-text">Suppliers</span>
+                </a>
+                <a href="/reports" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    <span class="nav-text">Reports</span>
+                </a>
+                <a href="/settings" class="px-4 py-3 flex items-center text-blue-100 hover:bg-blue-700 rounded mx-2">
+                    <i class="fas fa-cog mr-3"></i>
+                    <span class="nav-text">Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- my contnent -->
+        <div class="main-content flex-1 overflow-auto">
+            {% block content %}
+            
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("toggleSidebar").addEventListener("click", function() {
+            document.querySelector(".sidebar").classList.toggle("collapsed");
+        });
+    </script>
+</body>
+</html>

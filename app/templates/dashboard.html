@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}"></link>
+
+{% endblock %}
+{% block content %}
+
+
+<h2 class="text-2xl font-semibold mb-6">Dashboard Overview</h2>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500">Total Tools</h3>
+        <p class="text-2xl font-bold text-blue-600">{{ total_tools }}</p>
+        <p class="text-xs text-gray-400">+{{ growth }}% from last month</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500">Active Tools</h3>
+        <p class="text-2xl font-bold text-blue-600">{{ active_tools }}</p>
+        <p class="text-xs text-gray-400">{{ active_percent }}% of total</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500">Maintenance</h3>
+        <p class="text-2xl font-bold text-blue-600">{{ maintenance_tools }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500">Out of Service</h3>
+        <p class="text-2xl font-bold text-blue-600">{{ out_of_service_tools }}</p>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-4">Tool Status Distribution</h3>
+        <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-4">Inventory Distribution</h3>
+        <div class="chart-container">
+            <canvas id="inventoryChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Tools Table -->
+<div class="bg-white rounded-lg shadow p-4 mb-8">
+    <h3 class="text-sm font-medium text-gray-500 mb-4">Recent Tools</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="border-b">
+                    <th class="text-left py-2 px-4">Tool ID</th>
+                    <th class="text-left py-2 px-4">Name</th>
+                    <th class="text-left py-2 px-4">Location</th>
+                    <th class="text-left py-2 px-4">Status</th>
+                    <th class="text-left py-2 px-4">Last Checked</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tool in recent_tools %}
+                <tr class="border-b">
+                    <td class="py-2 px-4">{{ tool.id }}</td>
+                    <td class="py-2 px-4">{{ tool.name }}</td>
+                    <td class="py-2 px-4">{{ tool.location }}</td>
+                    {% if tool.status == "En réparation" %}
+                    <td class="py-2 px-4">
+                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
+                    </td>
+                    {% elif tool.status == "Disponible" %}
+                    <td class="py-2 px-4">
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
+                    </td>
+                    {% else %}
+                    <td class="py-2 px-4">
+                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
+                    </td>
+                    {% endif %}
+
+                    <td class="py-2 px-4">{{ tool.last_checked }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Alerts -->
+<div class="bg-white rounded-lg shadow p-4">
+    <h3 class="text-sm font-medium text-gray-500 mb-4">Alerts</h3>
+    <div role="list" aria-live="polite">
+        {% for alert in alerts %}
+        <div class="border-b pb-2 mb-2">
+            <p class="text-sm">{{ alert.message }}</p>
+            <p class="text-xs text-gray-400">{{ alert.timestamp }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.active_tools = {{ active_tools }};
+    window.maintenance = {{ maintenance_tools }};
+    window.out_of_service_tools = {{ out_of_service_tools | default(0) | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+{% endblock %}
