@@ -1,0 +1,28 @@
+.slide-in {
+    animation: slideIn 0.5s forwards;
+}
+.slide-out {
+    animation: slideOut 0.5s forwards;
+}
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+}
+.fade-in {
+    animation: fadeIn 0.3s forwards;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.tool-card {
+    transition: all 0.3s ease;
+}
+.tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}

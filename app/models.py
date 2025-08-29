@@ -1,6 +1,6 @@
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from . import db
 
 
@@ -30,9 +30,10 @@ class Category(db.Model):
 
     tools = db.relationship("Tool", back_populates="category")
 
+
 class Tool(db.Model):
     __tablename__ = "tools"
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(100), primary_key=True)
     name = db.Column(db.String(100), nullable=False)
 
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
@@ -45,10 +46,13 @@ class Tool(db.Model):
     description = db.Column(db.String(200))
 
     # status info
-    purchase_date = db.Column(db.Date)
+    date_ajout = db.Column(db.DateTime, default=datetime.utcnow)
+    purchase_date = db.Column(db.Date, default=datetime.utcnow)
     last_maintenance = db.Column(db.Date)
+    last_checked_out = db.Column(db.DateTime, nullable=True)   # 
     price = db.Column(db.Float)
-    status = db.Column(db.String(20), default='Disponible')  # Disponible, En réparation, Cassé
+    status = db.Column(db.String(20), default='Disponible')#status = random.choice(['Disponible', 'En réparation', 'Cassé','Emprunté'])
+    photo = db.Column(db.String(200))
 
     movements = db.relationship('Movement', back_populates='tool')
 
@@ -59,13 +63,18 @@ class Movement(db.Model):
     __tablename__ = "movements"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    tool_id = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
+    tool_id = db.Column(db.String(100), db.ForeignKey('tools.id'), nullable=False)
     tool = db.relationship('Tool', back_populates='movements')
 
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'))
     employee = db.relationship('Employee', back_populates='movements')
 
     date_emprunt = db.Column(db.DateTime, default=datetime.utcnow)
-    return_date = db.Column(db.DateTime)
-    expected_return = db.Column(db.DateTime)
-    status = db.Column(db.String(20), default='Checked Out')  # Checked Out, Returned
+
+    # 
+    expected_return = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(days=7))
+
+    return_date = db.Column(db.DateTime, nullable=True)
+
+    status = db.Column(db.String(20), default='Checked Out')  
+    #  "Checked Out", "Returned" 

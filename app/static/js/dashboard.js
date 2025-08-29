@@ -1,48 +1,53 @@
-// Tool Status Chart
-const statusCtx = document.getElementById('statusChart').getContext('2d');
-new Chart(statusCtx, {
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Fetch data from Flask API
+        const response = await fetch("{{ url_for('view.cart') }}");
+        const data = await response.json();
+
+        // Destructure API values
+        const { total_tools,active_tools, active_percent,maintenance_tools, out_of_service_tools  } = data;
+
+        // ----------------- Status Chart -----------------
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Available', 'In Maintenance', 'Out of Service'],
+                datasets: [{
+                    data: [active_tools, maintenance_tools, out_of_service_tools],
+                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // ----------------- Inventory Chart (example) -----------------
+        const inventoryCtx = document.getElementById('inventoryChart').getContext('2d');
+    new Chart(inventoryCtx, {
     type: 'doughnut',
     data: {
-        labels: ['Active', 'Maintenance', 'Out of Service'],
+        labels: ['Active %', 'Total Tools'],
         datasets: [{
-            data: [window.active_tools, window.maintenance, window.out_of_service],
-            backgroundColor: [
-                'rgba(54, 162, 235, 0.7)',
-                'rgba(255, 206, 86, 0.7)',
-                'rgba(255, 99, 132, 0.7)'
-            ],
-            borderWidth: 0
+            label: 'Inventory Stats',
+            data: [active_percent, total_tools],
+            backgroundColor: ['#3B82F6', '#6366F1']
         }]
     },
     options: {
         responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
-        cutout: '70%'
+        plugins: {
+            legend: { position: 'bottom' }
+        }
     }
 });
-
-// Inventory Chart
-const inventoryCtx = document.getElementById('inventoryChart').getContext('2d');
-new Chart(inventoryCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Workshop A', 'Workshop B', 'Storage', 'In Transit'],
-        datasets: [{
-            data: [450, 380, 300, 115],
-            backgroundColor: [
-                'rgba(75, 192, 192, 0.7)',
-                'rgba(153, 102, 255, 0.7)',
-                'rgba(255, 159, 64, 0.7)',
-                'rgba(201, 203, 207, 0.7)'
-            ],
-            borderWidth: 0
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
-        cutout: '70%'
+    } catch (error) {
+        console.error("Error loading dashboard data:", error);
     }
 });

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Mouvements{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="bg-white shadow-sm mb-6 animate__animated animate__fadeInDown">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Historique des mouvements</h1>
+            <div class="mt-4 sm:mt-0 flex gap-2">
+                <button type="button" id="filterToggle" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 transition">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filtres
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div id="filterSection" class="bg-white border-b border-gray-200 shadow-sm hidden transition-all mb-6 rounded animate__animated animate__fadeIn">
+        <div class="max-w-4xl mx-auto px-4 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <label for="searchTool" class="block text-sm font-medium text-gray-700 mb-1">Outil</label>
+                <input type="text" id="searchTool" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Nom ou ID outil">
+            </div>
+            <div>
+                <label for="searchEmployee" class="block text-sm font-medium text-gray-700 mb-1">Employé</label>
+                <input type="text" id="searchEmployee" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Nom ou ID employé">
+            </div>
+            <div>
+                <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                <select id="statusFilter" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Tous</option>
+                    <option value="Checked Out">Emprunté</option>
+                    <option value="Returned">Rendu</option>
+                    <option value="En réparation">En réparation</option>
+                </select>
+            </div>
+            <div>
+                <label for="dateFilter" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="dateFilter" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="sortFilter" class="block text-sm font-medium text-gray-700 mb-1">Trier par date d'emprunt</label>
+                <select id="sortFilter" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="desc">Plus récent</option>
+                    <option value="asc">Plus ancien</option>
+                </select>
+            </div>
+            <div class="col-span-1 md:col-span-4 flex gap-2 justify-end mt-2">
+                <button type="button" id="applyFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition">
+                    Appliquer
+                </button>
+                <button type="button" id="clearFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
+                    Réinitialiser
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Movements Table -->
+    <div class="max-w-5xl mx-auto animate__animated animate__fadeInUp">
+        <div class="overflow-x-auto rounded-lg shadow">
+            <table class="min-w-full divide-y divide-gray-200 bg-white">
+                <thead class="bg-blue-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Outil</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Employé</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Statut</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date emprunt</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date retour</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date prévue</th>
+                    </tr>
+                </thead>
+                <tbody id="movementsTableBody" class="divide-y divide-gray-100">
+                    <!-- Rows will be injected here -->
+                </tbody>
+            </table>
+            <div id="movementsEmpty" class="text-center text-gray-500 py-8 hidden">Aucun mouvement trouvé.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterToggle').onclick = function() {
+    document.getElementById('filterSection').classList.toggle('hidden');
+};
+
+function statusBadge(status) {
+    if (status === "Checked Out") return `<span class="px-2 py-1 rounded bg-yellow-500 text-white font-semibold animate__animated animate__fadeIn">Emprunté</span>`;
+    if (status === "Returned") return `<span class="px-2 py-1 rounded bg-green-500 text-white font-semibold animate__animated animate__fadeIn">Rendu</span>`;
+    if (status === "En réparation") return `<span class="px-2 py-1 rounded bg-red-500 text-white font-semibold animate__animated animate__fadeIn">En réparation</span>`;
+    return `<span class="px-2 py-1 rounded bg-gray-400 text-white font-semibold animate__animated animate__fadeIn">${status}</span>`;
+}
+
+function renderMovements(movements) {
+    const tbody = document.getElementById('movementsTableBody');
+    tbody.innerHTML = '';
+    if (!movements.length) {
+        document.getElementById('movementsEmpty').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('movementsEmpty').classList.add('hidden');
+    movements.forEach(mov => {
+        tbody.innerHTML += `
+        <tr class="hover:bg-blue-50 transition animate__animated animate__fadeInUp">
+            <td class="px-4 py-3 flex items-center gap-2">
+                ${mov.tool_photo ? `<img src="${mov.tool_photo}" alt="${mov.tool_name}" class="w-10 h-10 object-cover rounded shadow border border-gray-200">` : ''}
+                <span class="font-semibold text-blue-700">${mov.tool_name || mov.tool_id}</span>
+            </td>
+            <td class="px-4 py-3">
+                <span class="font-medium text-gray-800">${mov.employee_name || mov.employee_id || '-'}</span>
+            </td>
+            <td class="px-4 py-3">${statusBadge(mov.status)}</td>
+            <td class="px-4 py-3">${mov.date_emprunt ? new Date(mov.date_emprunt).toLocaleString() : '-'}</td>
+            <td class="px-4 py-3">${mov.return_date ? new Date(mov.return_date).toLocaleString() : '-'}</td>
+            <td class="px-4 py-3">${mov.expected_return ? new Date(mov.expected_return).toLocaleDateString() : '-'}</td>
+        </tr>
+        `;
+    });
+}
+
+function fetchAndRenderMovements() {
+    const tool = document.getElementById('searchTool').value;
+    const employee = document.getElementById('searchEmployee').value;
+    const status = document.getElementById('statusFilter').value;
+    const date = document.getElementById('dateFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+    let params = [];
+    if (tool) params.push('tool=' + encodeURIComponent(tool));
+    if (employee) params.push('employee=' + encodeURIComponent(employee));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (date) params.push('date=' + encodeURIComponent(date));
+    if (sort) params.push('sort=' + encodeURIComponent(sort));
+    fetch('/api/movements?' + params.join('&'))
+        .then(res => res.json())
+        .then(data => renderMovements(data));
+}
+
+document.getElementById('applyFilters').onclick = fetchAndRenderMovements;
+document.getElementById('clearFilters').onclick = function() {
+    document.getElementById('searchTool').value = '';
+    document.getElementById('searchEmployee').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('sortFilter').value = 'desc';
+    fetchAndRenderMovements();
+};
+
+document.addEventListener('DOMContentLoaded', fetchAndRenderMovements);
+</script>
+{% endblock %}

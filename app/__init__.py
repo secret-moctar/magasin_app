@@ -15,7 +15,8 @@ def create_app():
 
     # Import models so they register with SQLAlchemy
     from . import models  
-
+    from .auth import auth
+    app.register_blueprint(auth)
     # Register routes
     from .views import view
     app.register_blueprint(view)

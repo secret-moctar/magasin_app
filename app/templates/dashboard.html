@@ -1,99 +1,218 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Tableau de Bord{% endblock %}
 {% block head %}
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}"></link>
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<style>
+  /* btn */
+  .floating-borrow-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+    z-index: 1000;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .floating-borrow-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.5);
+    background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  }
+  .floating-borrow-btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+  .floating-borrow-btn span {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  }
+  .pulse { animation: pulse 2s infinite; }
+</style>
 {% endblock %}
+
 {% block content %}
+<h2 class="text-2xl font-semibold mb-6">Aperçu du Tableau de Bord</h2>
 
-
-<h2 class="text-2xl font-semibold mb-6">Dashboard Overview</h2>
-
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500">Total Tools</h3>
-        <p class="text-2xl font-bold text-blue-600">{{ total_tools }}</p>
-        <p class="text-xs text-gray-400">+{{ growth }}% from last month</p>
-    </div>
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500">Active Tools</h3>
-        <p class="text-2xl font-bold text-blue-600">{{ active_tools }}</p>
-        <p class="text-xs text-gray-400">{{ active_percent }}% of total</p>
-    </div>
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500">Maintenance</h3>
-        <p class="text-2xl font-bold text-blue-600">{{ maintenance_tools }}</p>
-    </div>
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500">Out of Service</h3>
-        <p class="text-2xl font-bold text-blue-600">{{ out_of_service_tools }}</p>
-    </div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 items-center margin-20px">
+  <div class="info-card bg-white rounded-lg shadow p-6 m-2 hover:shadow-2xl transition-all duration-300 ease-in-out centered">
+    <h3 class="text-sm font-medium text-gray-500">Ensemble Des Outils</h3>
+    <p id="total_tools" class="text-2xl font-bold text-blue-800">{{ total_tools }}</p>
+    <p class="text-xs text-green-400">+{{ growth }}% depuis le mois dernier</p>
+  </div>
+  <div class="info-card bg-white rounded-lg shadow p-6 m-2 hover:shadow-2xl transition-all duration-300 ease-in-out">
+    <h3 class="text-sm font-medium text-gray-500">Outils Disponibles</h3>
+    <p id="active_tools" class="text-2xl font-bold text-green-600">{{ active_tools }}</p>
+    <p class="text-xs text-gray-400">{{ active_percent }}% du total</p>
+    <p id="active_percent" class="hidden">hi</p>
+  </div>
+  <div class="info-card bg-white rounded-lg shadow p-6 m-2 hover:shadow-2xl transition-all duration-300 ease-in-out">
+    <h3 class="text-sm font-medium text-gray-500">En Maintenance</h3>
+    <p id="maintenance_tools" class="text-2xl font-bold text-yellow-600">{{ maintenance_tools }}</p>
+  </div>
+  <div class="info-card bg-white rounded-lg shadow p-6 m-2 hover:shadow-2xl transition-all duration-300 ease-in-out">
+    <h3 class="text-sm font-medium text-gray-500">Emprunté</h3>
+    <p id="emprunt" class="text-2xl font-bold text-yellow-800">{{ emprunt }}</p>
+  </div>
+  <div class="info-card bg-white rounded-lg shadow p-6 m-2 hover:shadow-2xl transition-all duration-300 ease-in-out justify-center">
+    <h3 class="text-sm font-medium text-gray-500">Hors Service</h3>
+    <p id="out_of_service_tools" class="text-2xl font-bold text-red-600">{{ out_of_service_tools }}</p>
+  </div>
 </div>
 
-<!-- Charts Row -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500 mb-4">Tool Status Distribution</h3>
-        <div class="chart-container">
-            <canvas id="statusChart"></canvas>
-        </div>
-    </div>
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="text-sm font-medium text-gray-500 mb-4">Inventory Distribution</h3>
-        <div class="chart-container">
-            <canvas id="inventoryChart"></canvas>
-        </div>
-    </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <h3 class="text-sm font-medium text-gray-500 mb-4">Répartition des Statuts des Outils</h3>
+    <canvas id="statusChart" width="350" height="300"></canvas>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <h3 class="text-sm font-medium text-gray-500 mb-4">Répartition de l'Inventaire</h3>
+    <canvas id="inventoryChart" widht="350" height="300"></canvas>
+  </div>
 </div>
 
-<!-- Recent Tools Table -->
-<div class="bg-white rounded-lg shadow p-4 mb-8">
-    <h3 class="text-sm font-medium text-gray-500 mb-4">Recent Tools</h3>
-    <div class="overflow-x-auto">
-        <table class="min-w-full">
-            <thead>
-                <tr class="border-b">
-                    <th class="text-left py-2 px-4">Tool ID</th>
-                    <th class="text-left py-2 px-4">Name</th>
-                    <th class="text-left py-2 px-4">Location</th>
-                    <th class="text-left py-2 px-4">Status</th>
-                    <th class="text-left py-2 px-4">Last Checked</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tool in recent_tools %}
-                <tr class="border-b">
-                    <td class="py-2 px-4">{{ tool.id }}</td>
-                    <td class="py-2 px-4">{{ tool.name }}</td>
-                    <td class="py-2 px-4">{{ tool.location }}</td>
-                    {% if tool.status == "En réparation" %}
-                    <td class="py-2 px-4">
-                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
-                    </td>
-                    {% elif tool.status == "Disponible" %}
-                    <td class="py-2 px-4">
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
-                    </td>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    const data = {
+      total_tools: document.getElementById('total_tools').innerText,
+      active_tools: document.getElementById('active_tools').innerText,
+      active_percent: document.getElementById('active_percent').innerText,
+      maintenance_tools: document.getElementById('maintenance_tools').innerText,
+      emprunt: document.getElementById('emprunt').innerText,
+      out_of_service_tools: document.getElementById('out_of_service_tools').innerText
+    };
+
+    const { total_tools, active_tools, maintenance_tools, emprunt, out_of_service_tools } = data;
+
+    new Chart(document.getElementById('statusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Disponible','Emprunté','En Maintenance','Cassé'],
+        datasets: [{
+          data: [active_tools, emprunt, maintenance_tools, out_of_service_tools],
+          backgroundColor: ['#10B981','#FACC15','#F59E0B','#EF4444']
+        }]
+      },
+      options: { responsive: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('inventoryChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Disponible','Indisponible'],
+        datasets: [{
+          data: [active_tools, total_tools - active_tools],
+          backgroundColor: ['#10B981','#F59E0B']
+        }]
+      },
+      options: { responsive: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  } catch (error) {
+    console.error("chart err:", error);
+  }
+});
+</script>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 scaled-down-90 ">
+    <div class="bg-white rounded-lg shadow p-4 mb-8 flex flex-col">
+        <h3 class="text-sm font-medium text-gray-500 mb-4">Outils Récents</h3>
+        <div class="overflow-y-auto max-h-[500px] pr-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-6">
+                {% for tool in recent_tools[:10] %}
+                <div class="bg-gray-50 rounded-lg shadow hover:shadow-lg transition p-3 flex flex-col items-center">
+                    {% if tool.photo %}
+                        <img src="{{ tool.photo }}" alt="{{ tool.name }}" 
+                             class="w-28 h-28 object-cover rounded-lg mb-3">
                     {% else %}
-                    <td class="py-2 px-4">
-                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">{{ tool.status }}</span>
-                    </td>
+                        <div class="w-28 h-28 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
+                            <span class="text-gray-500 text-xs">Pas d'image</span>
+                        </div>
                     {% endif %}
-
-                    <td class="py-2 px-4">{{ tool.last_checked }}</td>
-                </tr>
+                    <h4 class="text-sm font-semibold text-gray-800">{{ tool.name }}</h4>
+                    <p class="text-xs text-gray-500 mb-1">
+                        Étagère {{ tool.loc_shelf }}, Ligne {{ tool.loc_row }}, Col {{ tool.loc_col }}
+                    </p>
+                    {% if tool.status == "En réparation" %}
+                    <span class="bg-yellow-100 text-orange-900 text-xs px-2 py-1 rounded mb-2">{{ tool.status }}</span>
+                    {% elif tool.status == "Disponible" %}
+                    <span class="bg-green-100 text-green-900 text-xs px-2 py-1 rounded mb-2">{{ tool.status }}</span>
+                    {% elif tool.status == "Emprunté" %}
+                    <span class="bg-green-100 text-yellow-900 text-xs px-2 py-1 rounded mb-2">{{ tool.status }}</span>
+                    {% else %}
+                    <span class="bg-red-100 text-red-900 text-xs px-2 py-1 rounded mb-2">{{ tool.status }}</span>
+                    {% endif %}
+                    <p class="text-xs text-gray-400">
+                        {% if tool.status == "Emprunté" and tool.expected_return %}
+                            Retour prévu : {{ tool.expected_return.strftime('%Y-%m-%d') }}
+                        {% elif tool.last_checked_out %}
+                            Dernière vérif : {{ tool.last_checked_out.strftime('%Y-%m-%d') }}
+                        {% else %}
+                            Jamais Emprunté
+                        {% endif %}
+                    </p>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 mb-8 flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-sm font-medium text-gray-500">Emprunts Récents</h3>
+            <a href="{{ url_for('view.new_borrow') }}" 
+               class="bg-blue-500 text-white text-sm px-3 py-1 rounded hover:bg-blue-600 transition">
+                + Nouvel Emprunt
+            </a>
+        </div>
+        <div class="overflow-y-auto max-h-[500px] pr-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {% for borrow in recent_borrows[:10] %}
+                <div class="bg-gray-50 rounded-lg shadow hover:shadow-lg transition p-3 flex flex-col items-center">
+                    {% if borrow.tool.photo %}
+                        <img src="{{ borrow.tool.photo }}" alt="{{ borrow.tool.name }}" 
+                             class="w-28 h-28 object-cover rounded-lg mb-3">
+                    {% else %}
+                        <div class="w-28 h-28 bg-gray-200 flex items-center justify-center rounded-lg mb-3">
+                            <span class="text-gray-500 text-xs">Pas d'image</span>
+                        </div>
+                    {% endif %}
+                    <h4 class="text-sm font-semibold text-gray-800">{{ borrow.tool.name }}</h4>
+                    <p class="text-xs text-gray-500 mb-1">Emprunteur: {{ borrow.employee.name }}</p>
+                    <p class="text-xs text-gray-400">
+                        Emprunté: {{ borrow.date_emprunt.strftime('%Y-%m-%d') }}
+                    </p>
+                    <p class="text-xs text-gray-400">
+                        {% if borrow.return_date %}
+                            Retour: {{ borrow.return_date.strftime('%Y-%m-%d') }}
+                        {% else %}
+                            <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Non retourné</span>
+                        {% endif %}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Alerts -->
 <div class="bg-white rounded-lg shadow p-4">
-    <h3 class="text-sm font-medium text-gray-500 mb-4">Alerts</h3>
+    <h3 class="text-sm font-medium text-gray-500 mb-4">Alertes</h3>
     <div role="list" aria-live="polite">
         {% for alert in alerts %}
         <div class="border-b pb-2 mb-2">
@@ -102,16 +221,21 @@
         </div>
         {% endfor %}
     </div>
-</div>
+</div></div>
+
+<a href="{{ url_for('view.new_borrow') }}"
+   class="floating-borrow-btn pulse group"
+   title="Nouvel Emprunt">
+    <i class="fas fa-plus text-3xl"></i>
+    <span class="mt-1 font-semibold text-xs opacity-0 group-hover:opacity-100 transition-all duration-300 absolute left-20 bg-blue-700 text-white px-3 py-1 rounded shadow">
+        Nouvel Emprunt
+    </span>
+</a>
 
 {% endblock %}
 
 {% block scripts %}
-<script>
-    window.active_tools = {{ active_tools }};
-    window.maintenance = {{ maintenance_tools }};
-    window.out_of_service_tools = {{ out_of_service_tools | default(0) | tojson }};
-</script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
 
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

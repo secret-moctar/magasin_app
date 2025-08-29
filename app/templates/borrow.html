@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emprunt d'outil</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .tool-card { transition: all 0.3s ease; }
+        .tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        #searchResults { position: absolute; width: 100%; z-index: 1000; max-height: 300px; overflow-y: auto; }
+        .status-available { color: #198754; }
+        .status-borrowed { color: #dc3545; }
+        .status-maintenance { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Gestion des outils</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('view.dashboard') }}">Tableau de bord</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{{url_for('view.new_borrow')}}">Emprunter un outil</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('view.inventory')}}">Gérer les outils</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('view.report')}}">Rapports</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="bi bi-tools"></i> Emprunter un outil</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="borrowForm" action="/borrows/new" method="POST">
+                            <!-- Tool search (unchanged) -->
+                            <div class="mb-3">
+                                <label for="toolSearch" class="form-label">Rechercher un outil</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="toolSearch" placeholder="Nom ou ID de l'outil">
+                                    <button class="btn btn-outline-secondary" type="button" id="searchToolBtn">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                                <div id="searchResults" class="card d-none">
+                                    <div class="card-body p-2">
+                                        <ul class="list-group list-group-flush" id="toolResultsList"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="selectedTool" class="form-label">Outil sélectionné</label>
+                                <div id="selectedTool" class="card p-3 bg-light">
+                                    <p class="text-muted mb-0">Aucun outil sélectionné. Recherchez et sélectionnez un outil ci-dessus.</p>
+                                </div>
+                                <input type="hidden" name="tool_id" id="toolIdInput">
+                            </div>
+
+                            <!-- Employee search (only one place) -->
+                            <div class="mb-3">
+                                <label for="employeeSearch" class="form-label">Rechercher un employé</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="employeeSearch" placeholder="Nom ou ID de l'employé">
+                                    <button class="btn btn-outline-secondary" type="button" id="searchEmployeeBtn">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                                <div id="employeeResults" class="card d-none" style="position:absolute; z-index:1000;">
+                                    <div class="card-body p-2">
+                                        <ul class="list-group list-group-flush" id="employeeResultsList"></ul>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="employee_id" id="employeeIdInput">
+                            </div>
+                            <div class="mb-3">
+                                <label for="selectedEmployee" class="form-label">Employé sélectionné</label>
+                                <div id="selectedEmployee" class="card p-3 bg-light">
+                                    <p class="text-muted mb-0">Aucun employé sélectionné. Recherchez et sélectionnez un employé ci-dessus.</p>
+                                </div>
+                            </div>
+
+                            
+                            <div class="mb-3">
+                                <label for="expectedReturn" class="form-label">Date de retour prévue</label>
+                                <input type="date" id="expectedReturn" name="expected_return" class="form-control" required min="{{ (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d') }}">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Créer l'emprunt
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Recherchez un outil par nom ou ID</li>
+                            <li>Sélectionnez l'outil dans les résultats</li>
+                            <li>Choisissez l'employé qui emprunte l'outil</li>
+                            <li>Si l'employé n'est pas listé, ajoutez-le avec le bouton "Ajouter un nouvel employé"</li>
+                            <li>Soumettez le formulaire pour créer l'emprunt</li>
+                        </ol>
+                        <div class="alert alert-warning mt-3">
+                            <i class="bi bi-exclamation-triangle"></i> Seuls les outils avec le statut "Disponible" peuvent être empruntés.
+                        </div>
+                    </div>
+                </div>
+                <div class="card mt-4">
+              
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajouter un nouvel employé</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <form id="addEmployeeForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="employeeId" class="form-label">ID de l'employé</label>
+                            <input type="number" class="form-control" id="employeeId" name="employee_id" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeName" class="form-label">Nom complet</label>
+                            <input type="text" class="form-control" id="employeeName" name="employee_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeDepartment" class="form-label">Département</label>
+                            <input type="text" class="form-control" id="employeeDepartment" name="employee_department" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter l'employé</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} mt-3" role="alert">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toolSearch = document.getElementById('toolSearch');
+            const searchResults = document.getElementById('searchResults');
+            const toolResultsList = document.getElementById('toolResultsList');
+            const selectedToolDiv = document.getElementById('selectedTool');
+            const toolIdInput = document.getElementById('toolIdInput');
+            const addEmployeeForm = document.getElementById('addEmployeeForm');
+            const employeeSelect = document.getElementById('employeeSelect');
+            const employeeSearch = document.getElementById('employeeSearch');
+            const employeeResults = document.getElementById('employeeResults');
+            const employeeResultsList = document.getElementById('employeeResultsList');
+            const selectedEmployeeDiv = document.getElementById('selectedEmployee');
+            const employeeIdInput = document.getElementById('employeeIdInput');
+            const expectedReturnInput = document.getElementById('expectedReturn');
+
+            // Tool search functionality
+            toolSearch.addEventListener('input', debounce(function() {
+                const query = toolSearch.value.trim();
+                if (query.length < 2) {
+                    searchResults.classList.add('d-none');
+                    return;
+                }
+                fetch(`/find-tools?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(tools => {
+                        toolResultsList.innerHTML = '';
+                        if (tools.length === 0) {
+                            toolResultsList.innerHTML = '<li class="list-group-item">Aucun outil trouvé</li>';
+                        } else {
+                            tools.forEach(tool => {
+                                const li = document.createElement('li');
+                                li.className = 'list-group-item tool-item';
+                                li.innerHTML = `
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">${tool.name} (ID: ${tool.id})</h6>
+                                            <small class="text-muted">Emplacement : Rangée ${tool.loc_row}, Colonne ${tool.loc_col}, Étagère ${tool.loc_shelf}</small>
+                                        </div>
+                                        <span class="badge ${tool.status === 'Disponible' ? 'bg-success' : 'bg-warning'}">${tool.status}</span>
+                                    </div>
+                                `;
+                                li.dataset.toolId = tool.id;
+                                li.dataset.toolName = tool.name;
+                                li.dataset.toolStatus = tool.status;
+                                toolResultsList.appendChild(li);
+                            });
+                            document.querySelectorAll('.tool-item').forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const toolId = this.dataset.toolId;
+                                    const toolName = this.dataset.toolName;
+                                    const toolStatus = this.dataset.toolStatus;
+                                    if (toolStatus !== 'Disponible') {
+                                        alert("Cet outil n'est pas disponible pour l'emprunt.");
+                                        return;
+                                    }
+                                    toolIdInput.value = toolId;
+                                    selectedToolDiv.innerHTML = `
+                                        <h5>${toolName}</h5>
+                                        <p class="mb-0">ID: ${toolId}</p>
+                                        <span class="badge bg-success">Disponible</span>
+                                    `;
+                                    searchResults.classList.add('d-none');
+                                    toolSearch.value = '';
+                                });
+                            });
+                        }
+                        searchResults.classList.remove('d-none');
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la recherche des outils:', error);
+                    });
+            }, 300));
+
+            // Hide search results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!toolSearch.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('d-none');
+                }
+            });
+
+            // Employee search functionality
+            employeeSearch.addEventListener('input', debounce(function() {
+                const query = employeeSearch.value.trim();
+                if (query.length < 2) {
+                    employeeResults.classList.add('d-none');
+                    return;
+                }
+                fetch(`/find-employees?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(employees => {
+                        employeeResultsList.innerHTML = '';
+                        if (employees.length === 0) {
+                            employeeResultsList.innerHTML = '<li class="list-group-item">Aucun employé trouvé</li>';
+                        } else {
+                            employees.forEach(emp => {
+                                const li = document.createElement('li');
+                                li.className = 'list-group-item employee-item';
+                                li.innerHTML = `
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">${emp.name} (ID: ${emp.id})</h6>
+                                            <small class="text-muted">Département : ${emp.department || ''}</small>
+                                        </div>
+                                    </div>
+                                `;
+                                li.dataset.empId = emp.id;
+                                li.dataset.empName = emp.name;
+                                employeeResultsList.appendChild(li);
+                            });
+                            document.querySelectorAll('.employee-item').forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const empId = this.dataset.empId;
+                                    const empName = this.dataset.empName;
+                                    employeeIdInput.value = empId;
+                                    selectedEmployeeDiv.innerHTML = `
+                                        <h5>${empName}</h5>
+                                        <p class="mb-0">ID: ${empId}</p>
+                                    `;
+                                    employeeResults.classList.add('d-none');
+                                    employeeSearch.value = '';
+                                });
+                            });
+                        }
+                        employeeResults.classList.remove('d-none');
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la recherche des employés:', error);
+                    });
+            }, 300));
+
+            // Add employee form submission
+            addEmployeeForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                fetch('/employees/add', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Instead of updating a select, just fill the employee fields
+                        employeeIdInput.value = data.employee.id;
+                        selectedEmployeeDiv.innerHTML = `
+                            <h5>${data.employee.name}</h5>
+                            <p class="mb-0">ID: ${data.employee.id}</p>
+                        `;
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal'));
+                        modal.hide();
+                        addEmployeeForm.reset();
+                        showSuccessPopup("Employé ajouté avec succès !");
+                    } else {
+                        showErrorPopup('Erreur : ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de l\'ajout de l\'employé:', error);
+                    alert('Erreur lors de l\'ajout de l\'employé. Veuillez réessayer.');
+                });
+            });
+
+            // Utility function for debouncing
+            function debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            // Set minimum expected return date to tomorrow
+            const today = new Date();
+            const minDate = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+            expectedReturnInput.min = minDate.toISOString().split('T')[0];
+            expectedReturnInput.value = minDate.toISOString().split('T')[0];
+
+            function showSuccessPopup(msg) {
+                let popup = document.getElementById('successPopup');
+                if (!popup) {
+                    popup = document.createElement('div');
+                    popup.id = 'successPopup';
+                    popup.className = 'position-fixed bottom-0 start-0 mb-4 ms-4 bg-success text-white px-4 py-2 rounded shadow-lg fs-5 animate__animated animate__fadeInUp';
+                    document.body.appendChild(popup);
+                }
+                popup.textContent = msg;
+                popup.style.display = 'block';
+                setTimeout(() => { popup.style.display = 'none'; }, 2000);
+            }
+            function showErrorPopup(msg) {
+                let popup = document.getElementById('errorPopup');
+                if (!popup) {
+                    popup = document.createElement('div');
+                    popup.id = 'errorPopup';
+                    popup.className = 'position-fixed bottom-0 start-0 mb-4 ms-4 bg-danger text-white px-4 py-2 rounded shadow-lg fs-5 animate__animated animate__fadeInUp';
+                    document.body.appendChild(popup);
+                }
+                popup.textContent = msg;
+                popup.style.display = 'block';
+                setTimeout(() => { popup.style.display = 'none'; }, 2500);
+            }
+        });
+    </script>
+</body>
+</html>

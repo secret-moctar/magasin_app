@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="bg-white shadow-sm mb-6">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Gestion de la maintenance</h1>
+            <div class="mt-4 sm:mt-0 flex gap-2">
+                <button type="button" id="filterToggle" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 transition">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filtres
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div id="filterSection" class="bg-white border-b border-gray-200 shadow-sm hidden transition-all mb-6 rounded">
+        <div class="max-w-4xl mx-auto px-4 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
+                <div class="relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" id="searchInput" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="Nom ou ID de l'outil">
+                </div>
+            </div>
+            <div>
+                <label for="filterCategory" class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <select id="filterCategory" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Toutes les catégories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                <select id="filterStatus" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Tous</option>
+                    <option value="Disponible">Disponible</option>
+                    <option value="Cassé">Cassé</option>
+                    <option value="En réparation">En réparation</option>
+                </select>
+            </div>
+            <div>
+                <label for="sortFilter" class="block text-sm font-medium text-gray-700 mb-1">Trier par</label>
+                <select id="sortFilter" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="date_emprunt_desc">Date d'emprunt (plus récent)</option>
+                    <option value="date_emprunt_asc">Date d'emprunt (plus ancien)</option>
+                    <option value="expected_return_desc">Date prévue retour (plus récent)</option>
+                    <option value="expected_return_asc">Date prévue retour (plus ancien)</option>
+                </select>
+            </div>
+            <div class="col-span-1 md:col-span-4 flex gap-2 justify-end mt-2">
+                <button type="button" id="applyFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition">
+                    Appliquer
+                </button>
+                <button type="button" id="clearFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
+                    Réinitialiser
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tools Grid -->
+    <div id="toolsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"></div>
+    <div id="toolsEmpty" class="col-span-full text-center text-gray-500 py-8 hidden">
+        Aucun outil trouvé.
+    </div>
+</div>
+
+<!-- Modal for Maintenance -->
+<div id="maintenanceModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <button id="closeMaintenanceModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Retour de maintenance</h2>
+        <form id="maintenanceForm" method="POST">
+            <input type="hidden" name="tool_id" id="modalToolId">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">ID de l'employé réparateur</label>
+                <input type="number" name="employee_id" id="modalEmployeeId" required class="block w-full border-gray-300 rounded-md shadow-sm">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nouveau statut</label>
+                <select name="status" id="modalReturnStatus" required class="block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="Disponible" selected>Disponible</option>
+                    <option value="Cassé">Cassé</option>
+                </select>
+            </div>
+            <div class="mb-3 grid grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Étagère</label>
+                    <input type="number" name="loc_shelf" id="modalLocShelf" min="1" required class="block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Colonne</label>
+                    <input type="number" name="loc_col" id="modalLocCol" min="1" required class="block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Rangée</label>
+                    <input type="number" name="loc_row" id="modalLocRow" min="1" required class="block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+            </div>
+            <button type="submit" id="maintenanceSubmitBtn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold transition">Valider le retour</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal for sending to maintenance -->
+<div id="sendMaintenanceModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <button id="closeSendMaintenanceModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Envoyer en maintenance</h2>
+        <form id="sendMaintenanceForm">
+            <input type="hidden" name="tool_id" id="sendModalToolId">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date de retour prévue</label>
+                <input type="date" name="expected_return" id="sendModalExpectedReturn" required class="block w-full border-gray-300 rounded-md shadow-sm">
+            </div>
+            <button type="submit" class="w-full mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-semibold">Envoyer</button>
+        </form>
+    </div>
+</div>
+
+<div id="successPopup" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded shadow-lg text-lg font-semibold hidden transition animate__animated animate__fadeInDown"></div>
+<div id="errorPopup" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded shadow-lg text-lg font-semibold hidden transition animate__animated animate__fadeInDown"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterToggle').onclick = function() {
+    document.getElementById('filterSection').classList.toggle('hidden');
+};
+
+function statusBadge(status) {
+    if (status === "Disponible") return `<span class="inline-block px-3 py-1 rounded-full text-white text-sm font-semibold bg-green-500">Disponible</span>`;
+    if (status === "Cassé") return `<span class="inline-block px-3 py-1 rounded-full text-white text-sm font-semibold bg-red-600">Cassé</span>`;
+    if (status === "En réparation") return `<span class="inline-block px-3 py-1 rounded-full text-white text-sm font-semibold bg-yellow-500">En réparation</span>`;
+    return `<span class="inline-block px-3 py-1 rounded-full text-white text-sm font-semibold bg-gray-400">${status}</span>`;
+}
+
+function renderTools(tools) {
+    const grid = document.getElementById('toolsGrid');
+    grid.innerHTML = '';
+    if (!tools.length) {
+        document.getElementById('toolsEmpty').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('toolsEmpty').classList.add('hidden');
+    tools.forEach(tool => {
+        grid.innerHTML += `
+        <div class="bg-white rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out flex flex-col items-center p-6 border border-blue-100">
+            ${tool.photo ? 
+                `<img src="${tool.photo}" alt="${tool.name}" class="w-32 h-32 object-cover rounded mb-3 border border-gray-200">` :
+                `<div class="w-32 h-32 flex items-center justify-center bg-gray-200 rounded mb-3 text-gray-400 text-4xl">
+                    <i class="fas fa-image"></i>
+                </div>`
+            }
+            <div class="text-xl font-bold text-blue-700 mb-2">${tool.name}</div>
+            <div class="text-base text-gray-500 mb-1">${tool.category || "Aucune catégorie"}</div>
+            <div class="text-sm text-gray-400 mb-2">Emplacement: 
+                ${tool.loc_shelf && tool.loc_col && tool.loc_row
+                    ? `Étagère ${tool.loc_shelf}, Col ${tool.loc_col}, Rangée ${tool.loc_row}`
+                    : "N/A"}
+            </div>
+            <div class="mb-2">${statusBadge(tool.status)}</div>
+            ${tool.status === "En réparation" ? `
+            <button type="button"
+                class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold shadow open-maintenance-modal"
+                data-tool-id="${tool.id}"
+                data-loc-shelf="${tool.loc_shelf}"
+                data-loc-col="${tool.loc_col}"
+                data-loc-row="${tool.loc_row}">
+                Marquer comme revenu
+            </button>
+            ` : `
+            <button type="button"
+                class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 font-semibold shadow open-send-maintenance"
+                data-tool-id="${tool.id}">
+                Envoyer en maintenance
+            </button>
+            `}
+        </div>
+        `;
+    });
+
+    // Attach modal logic to new buttons
+    document.querySelectorAll('.open-maintenance-modal').forEach(btn => {
+        btn.onclick = function() {
+            document.getElementById('modalToolId').value = btn.dataset.toolId;
+            document.getElementById('modalLocShelf').value = btn.dataset.locShelf;
+            document.getElementById('modalLocCol').value = btn.dataset.locCol;
+            document.getElementById('modalLocRow').value = btn.dataset.locRow;
+            document.getElementById('maintenanceModal').classList.remove('hidden');
+        };
+    });
+    // Show the modal when clicking "Envoyer en maintenance"
+    document.querySelectorAll('.open-send-maintenance').forEach(btn => {
+        btn.onclick = function() {
+            document.getElementById('sendModalToolId').value = btn.dataset.toolId;
+            document.getElementById('sendModalExpectedReturn').value = '';
+            document.getElementById('sendMaintenanceModal').classList.remove('hidden');
+        };
+    });
+}
+
+function fetchAndRenderTools() {
+    const q = document.getElementById('searchInput').value;
+    const category = document.getElementById('filterCategory').value;
+    const status = document.getElementById('filterStatus').value;
+    const sort = document.getElementById('sortFilter').value;
+    fetch(`/api/maintenance-tools?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}&status=${encodeURIComponent(status)}&sort=${encodeURIComponent(sort)}`)
+        .then(res => res.json())
+        .then(data => renderTools(data.items || []));
+}
+
+function fetchAndRenderMovements() {
+    const tool = document.getElementById('searchTool').value;
+    const employee = document.getElementById('searchEmployee').value;
+    const status = document.getElementById('statusFilter').value;
+    const date = document.getElementById('dateFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+    let params = [];
+    if (tool) params.push('tool=' + encodeURIComponent(tool));
+    if (employee) params.push('employee=' + encodeURIComponent(employee));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (date) params.push('date=' + encodeURIComponent(date));
+    if (sort) params.push('sort=' + encodeURIComponent(sort));
+    fetch('/api/movements?' + params.join('&'))
+        .then(res => res.json())
+        .then(data => renderMovements(data));
+}
+
+document.getElementById('applyFilters').onclick = fetchAndRenderTools;
+document.getElementById('clearFilters').onclick = function() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('sortFilter').value = 'date_emprunt_desc';
+    fetchAndRenderTools();
+};
+
+// Initial load
+document.addEventListener('DOMContentLoaded', fetchAndRenderTools);
+
+// Modal logic
+const maintenanceModal = document.getElementById('maintenanceModal');
+const closeMaintenanceModal = document.getElementById('closeMaintenanceModal');
+const maintenanceForm = document.getElementById('maintenanceForm');
+const maintenanceSubmitBtn = document.getElementById('maintenanceSubmitBtn');
+
+closeMaintenanceModal.onclick = function() {
+    maintenanceModal.classList.add('hidden');
+};
+maintenanceModal.onclick = function(e) {
+    if (e.target === maintenanceModal) maintenanceModal.classList.add('hidden');
+};
+
+document.getElementById('modalReturnStatus').onchange = function() {
+    if (this.value === 'Cassé') {
+        maintenanceSubmitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        maintenanceSubmitBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+        maintenanceSubmitBtn.textContent = 'Confirmer comme Cassé';
+    } else {
+        maintenanceSubmitBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        maintenanceSubmitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        maintenanceSubmitBtn.textContent = 'Confirmer comme Disponible';
+    }
+};
+
+maintenanceForm.onsubmit = function(e) {
+    e.preventDefault();
+    const toolId = document.getElementById('modalToolId').value;
+    const employeeId = document.getElementById('modalEmployeeId').value;
+    const status = document.getElementById('modalReturnStatus').value;
+    const locShelf = document.getElementById('modalLocShelf').value;
+    const locCol = document.getElementById('modalLocCol').value;
+    const locRow = document.getElementById('modalLocRow').value;
+    fetch(`/maintenance/return/${toolId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            employee_id: employeeId,
+            status: status,
+            loc_shelf: locShelf,
+            loc_col: locCol,
+            loc_row: locRow
+        })
+    }).then(res => {
+        maintenanceModal.classList.add('hidden');
+        fetchAndRenderTools();
+    });
+};
+
+// Send maintenance modal logic
+const sendMaintenanceModal = document.getElementById('sendMaintenanceModal');
+const closeSendMaintenanceModal = document.getElementById('closeSendMaintenanceModal');
+const sendMaintenanceForm = document.getElementById('sendMaintenanceForm');
+
+closeSendMaintenanceModal.onclick = function() {
+    sendMaintenanceModal.classList.add('hidden');
+};
+sendMaintenanceModal.onclick = function(e) {
+    if (e.target === sendMaintenanceModal) sendMaintenanceModal.classList.add('hidden');
+};
+
+// Handle form submit
+document.getElementById('sendMaintenanceForm').onsubmit = function(e) {
+    e.preventDefault();
+    const toolId = document.getElementById('sendModalToolId').value;
+    const expectedReturn = document.getElementById('sendModalExpectedReturn').value;
+    const now = new Date();
+    const inputDate = new Date(expectedReturn);
+
+    if (!expectedReturn || isNaN(inputDate.getTime()) || inputDate <= now) {
+        showErrorPopup("La date de retour doit être dans le futur.");
+        return;
+    }
+
+    fetch(`/maintenance/send/${toolId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({expected_return: expectedReturn})
+    }).then(res => {
+        if (res.ok) {
+            showSuccessPopup("Outil envoyé en maintenance. Retour prévu : " + expectedReturn);
+            document.getElementById('sendMaintenanceModal').classList.add('hidden');
+            fetchAndRenderTools();
+        } else {
+            showErrorPopup("Erreur lors de l'envoi en maintenance.");
+        }
+    });
+};
+
+function showSuccessPopup(msg) {
+    let popup = document.getElementById('successPopup');
+    popup.textContent = msg;
+    popup.classList.remove('hidden');
+    setTimeout(() => { popup.classList.add('hidden'); }, 2000);
+}
+function showErrorPopup(msg) {
+    let popup = document.getElementById('errorPopup');
+    popup.textContent = msg;
+    popup.classList.remove('hidden');
+    setTimeout(() => { popup.classList.add('hidden'); }, 2500);
+}
+</script>
+{% endblock %}

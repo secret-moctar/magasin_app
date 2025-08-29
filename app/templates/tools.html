@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des outils empruntés{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="bg-white shadow-sm mb-6">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Outils actuellement empruntés</h1>
+            <div class="mt-4 sm:mt-0 flex gap-2">
+                <button type="button" id="filterToggle" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 transition">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div id="filterSection" class="bg-white border-b border-gray-200 shadow-sm hidden transition-all mb-6 rounded">
+        <div class="max-w-4xl mx-auto px-4 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <div class="relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" id="searchInput" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="Tool or Employee Name/ID">
+                </div>
+            </div>
+            <div>
+                <label for="filterCategory" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select id="filterCategory" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filterDateEmprunt" class="block text-sm font-medium text-gray-700 mb-1">Borrow Date</label>
+                <input type="date" id="filterDateEmprunt" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="filterExpectedReturn" class="block text-sm font-medium text-gray-700 mb-1">Expected Return</label>
+                <input type="date" id="filterExpectedReturn" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div class="col-span-1 md:col-span-4 flex gap-2 justify-end mt-2">
+                <select id="sortDate" class="block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-semibold w-auto">
+                    <option value="desc">Borrow Date ↓</option>
+                    <option value="asc">Borrow Date ↑</option>
+                </select>
+                <button type="button" id="applyFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition">
+                    Apply
+                </button>
+                <button type="button" id="clearFilters" class="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tools Grid -->
+    <div id="toolsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for movement in movements %}
+        {% set tool = movement.tool %}
+        {% set now = now %}
+        {% set days_left = (movement.expected_return - now).days if movement.expected_return else None %}
+        {% set overdue = (now - movement.expected_return).days if movement.expected_return and now > movement.expected_return else None %}
+        <div class="bg-white rounded-lg shadow tool-card hover:shadow-2xl transition-all duration-300 ease-in-out flex flex-col items-center p-4 border border-gray-200">
+            <img src="{{ tool.photo or url_for('static', filename='img/tool_placeholder.png') }}" alt="{{ tool.name }}" class="w-24 h-24 object-cover rounded mb-2 border border-gray-200 shadow">
+            <div class="text-lg font-semibold text-blue-700 mb-1">{{ tool.name }}</div>
+            <div class="text-sm text-gray-500 mb-1">ID: {{ tool.id }}</div>
+            <div class="text-sm text-gray-500 mb-1">Catégorie: {{ tool.category.name if tool.category else 'N/A' }}</div>
+            <div class="text-xs text-gray-400 mb-1">Emprunté par: {{ movement.employee.name }}</div>
+            <div class="text-xs text-gray-400 mb-1">Département: {{ movement.employee.department }}</div>
+            <div class="text-xs text-gray-400 mb-1">Date d'emprunt: {{ movement.date_emprunt.strftime('%Y-%m-%d') }}</div>
+            <div class="text-xs text-gray-400 mb-1">Retour prévu: {{ movement.expected_return.strftime('%Y-%m-%d') if movement.expected_return else 'N/A' }}</div>
+            <div class="text-xs text-gray-400 mb-1">Statut: {{ movement.status }}</div>
+            <div class="text-xs font-semibold mb-1">
+                {% if tool.status == "Disponible" %}
+                    <span class="px-2 py-1 rounded bg-green-500 text-white">Disponible</span>
+                {% elif tool.status == "Cassé" %}
+                    <span class="px-2 py-1 rounded bg-red-700 text-white">Cassé</span>
+                {% else %}
+                    <span class="px-2 py-1 rounded bg-yellow-500 text-white">{{ tool.status }}</span>
+                {% endif %}
+            </div>
+            <div class="text-xs text-gray-400 mb-1">
+                {% if days_left is not none and days_left >= 0 %}
+                    Temps restant: <span class="font-bold {% if days_left <= 2 %}text-red-600{% elif days_left <= 7 %}text-yellow-600{% else %}text-green-600{% endif %}">{{ days_left }} jours</span>
+                {% elif overdue is not none and overdue > 0 %}
+                    <span class="font-bold text-red-600">En retard de {{ overdue }} jours</span>
+                {% else %}
+                    <span class="font-bold text-gray-500">N/A</span>
+                {% endif %}
+            </div>
+            <button type="button"
+                class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold shadow open-location-modal"
+                data-movement-id="{{ movement.id }}"
+                data-loc-shelf="{{ tool.loc_shelf }}"
+                data-loc-col="{{ tool.loc_col }}"
+                data-loc-row="{{ tool.loc_row }}">
+                Marquer comme disponible
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal for location -->
+<div id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Tool Return Location</h2>
+            <button id="closeLocationModal" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="locationForm">
+            <input type="hidden" id="modalMovementId">
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="modalLocShelf" class="block text-sm font-medium text-gray-700 mb-1">Shelf</label>
+                    <input type="text" id="modalLocShelf" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="modalLocCol" class="block text-sm font-medium text-gray-700 mb-1">Column</label>
+                    <input type="text" id="modalLocCol" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="modalLocRow" class="block text-sm font-medium text-gray-700 mb-1">Row</label>
+                    <input type="text" id="modalLocRow" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="modalReturnStatus" class="block text-sm font-medium text-gray-700 mb-1">Statut au retour</label>
+                    <select id="modalReturnStatus" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        <option value="Disponible" selected>Disponible</option>
+                        <option value="Cassé">Cassé</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" id="closeLocationModal" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 transition">
+                    Annuler
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition">
+                    Confirmer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Popup -->
+<div id="successPopup" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded shadow-lg text-lg font-semibold hidden transition animate__animated animate__fadeInDown">
+    Outil ajouté avec succès !
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterToggle').onclick = function() {
+    document.getElementById('filterSection').classList.toggle('hidden');
+};
+
+// Modal logic
+const locationModal = document.getElementById('locationModal');
+const closeLocationModal = document.getElementById('closeLocationModal');
+const locationForm = document.getElementById('locationForm');
+
+document.querySelectorAll('.open-location-modal').forEach(btn => {
+    btn.onclick = function() {
+        document.getElementById('modalMovementId').value = btn.dataset.movementId;
+        document.getElementById('modalLocShelf').value = btn.dataset.locShelf;
+        document.getElementById('modalLocCol').value = btn.dataset.locCol;
+        document.getElementById('modalLocRow').value = btn.dataset.locRow;
+        locationModal.classList.remove('hidden');
+    };
+});
+closeLocationModal.onclick = function() {
+    locationModal.classList.add('hidden');
+};
+locationModal.onclick = function(e) {
+    if (e.target === locationModal) locationModal.classList.add('hidden');
+};
+
+// Handle form submit
+locationForm.onsubmit = function(e) {
+    e.preventDefault();
+    const movementId = document.getElementById('modalMovementId').value;
+    const locShelf = document.getElementById('modalLocShelf').value;
+    const locCol = document.getElementById('modalLocCol').value;
+    const locRow = document.getElementById('modalLocRow').value;
+    const status = document.getElementById('modalReturnStatus').value;
+    fetch(`/tools/return/${movementId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({loc_shelf: locShelf, loc_col: locCol, loc_row: locRow, status: status})
+    }).then(res => {
+        if (res.redirected) {
+            window.location.href = res.url;
+        } else {
+            locationModal.classList.add('hidden');
+            window.location.reload();
+        }
+    });
+};
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('applyFilters').onclick = function() {
+        const searchVal = document.getElementById('searchInput').value;
+        const dateEmprunt = document.getElementById('filterDateEmprunt').value;
+        const expectedReturn = document.getElementById('filterExpectedReturn').value;
+        const category = document.getElementById('filterCategory').value;
+        const sortDate = document.getElementById('sortDate').value;
+        let params = [];
+        if (searchVal) params.push('search=' + encodeURIComponent(searchVal));
+        if (dateEmprunt) params.push('date_emprunt=' + encodeURIComponent(dateEmprunt));
+        if (expectedReturn) params.push('expected_return=' + encodeURIComponent(expectedReturn));
+        if (category) params.push('category=' + encodeURIComponent(category));
+        if (sortDate) params.push('sort=' + sortDate);
+        window.location.href = '/tools?' + params.join('&');
+    };
+    document.getElementById('clearFilters').onclick = function() {
+        window.location.href = '/tools';
+    };
+    document.getElementById('modalReturnStatus').onchange = function() {
+        const btn = locationForm.querySelector('button[type="submit"]');
+        if (this.value === 'Cassé') {
+            btn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-gray-700', 'hover:bg-gray-800');
+            btn.classList.add('bg-red-600', 'hover:bg-red-700');
+            btn.textContent = 'Confirmer comme Cassé';
+        } else {
+            btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+            btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            btn.textContent = 'Confirmer comme Disponible';
+        }
+    };
+});
+</script>
+{% endblock %}

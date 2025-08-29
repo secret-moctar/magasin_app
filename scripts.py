@@ -53,6 +53,12 @@ category_ids = [row[0] for row in cursor.fetchall()]
 # ---------- Insert tools ----------
 tools = []
 for _ in range(200):
+    if _ <10:
+        id = "TL000"+str(_+1)
+    elif _ <100:
+        id = "TL00"+str(_+1)
+    else:
+        id = "TL0"+str(_+1)
     name = fake.word().capitalize() + " Tool"
     category_id = random.choice(category_ids)
     loc_row = random.randint(1, 10)
@@ -62,13 +68,13 @@ for _ in range(200):
     purchase_date = random_date()
     last_maintenance = purchase_date + timedelta(days=random.randint(30, 500))
     price = round(random.uniform(10.0, 1000.0), 2)
-    status = random.choice(['Disponible', 'En réparation', 'Cassé'])
-    tools.append((name, category_id, loc_row, loc_col, loc_shelf, description, purchase_date, last_maintenance, price, status))
+    status = random.choice(['Disponible', 'En réparation', 'Cassé','Emprunté'])
+    tools.append((id,name, category_id, loc_row, loc_col, loc_shelf, description, purchase_date, last_maintenance, price, status))
 
 cursor.executemany("""
     INSERT INTO tools
-    (name, category_id, loc_row, loc_col, loc_shelf, description, purchase_date, last_maintenance, price, status)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    (id,name, category_id, loc_row, loc_col, loc_shelf, description, purchase_date, last_maintenance, price, status)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
 """, tools)
 cnx.commit()
 print("Inserted 200 tools.")
