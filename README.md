@@ -1,4 +1,4 @@
-listen carefully you mf 
+listen carefully 
 
 1. ## first you should create the database by idk maybe magasin_outillage or whatever 
 
